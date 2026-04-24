@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { subscribeToRequests } from '../../services/requestService';
-import { IdeaRequest, Status, Priority, Team } from '../../types';
+import { IdeaRequest, Status, Priority, Team, computeSavings } from '../../types';
 import { BarChart2, Clock, TrendingUp, CheckCircle2, Lightbulb, Wrench, PartyPopper, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion } from 'framer-motion';
@@ -134,10 +134,20 @@ export const StatsView: React.FC = () => {
       ? Math.round(resolved.reduce((acc, r) => acc + (daysBetween(r.createdAt, r.resolvedAt) ?? 0), 0) / resolved.length)
       : null;
 
-    // Total hours saved (from done requests)
-    const totalHoursSaved = requests
-      .filter((r) => r.status === Status.DONE)
-      .reduce((acc, r) => acc + (r.hoursPerWeek || 0), 0);
+    // Total hours saved (from done requests) — weekly, monthly, annual
+    const doneRequests = requests.filter((r) => r.status === Status.DONE);
+    const totalWeeklySaved = doneRequests.reduce((acc, r) => acc + (r.hoursPerWeek || 0), 0);
+    const totalHoursSaved = totalWeeklySaved; // keep for compat
+    const totalMonthlySaved = Math.round(totalWeeklySaved * 4.33 * 10) / 10;
+    const totalAnnualSaved = Math.round(totalWeeklySaved * 52);
+
+    // Per-team savings breakdown (done only)
+    const savingsByTeam = Object.values(Team).map((team) => {
+      const weekly = doneRequests
+        .filter((r) => r.team === team)
+        .reduce((acc, r) => acc + (r.hoursPerWeek || 0), 0);
+      return { team, weekly, monthly: Math.round(weekly * 4.33 * 10) / 10, annual: Math.round(weekly * 52) };
+    }).filter((t) => t.weekly > 0);
 
     // By team
     const byTeam = Object.values(Team).map((team) => ({
@@ -178,26 +188,30 @@ export const StatsView: React.FC = () => {
         return order[a.priority] - order[b.priority];
       });
 
-    return { total, byStatus, completionRate, avgResolutionDays, totalHoursSaved, byTeam, byPriority, stale, recent, backlog };
+    return { total, byStatus, completionRate, avgResolutionDays, totalHoursSaved, totalWeeklySaved, totalMonthlySaved, totalAnnualSaved, savingsByTeam, byTeam, byPriority, stale, recent, backlog, doneRequests };
   }, [requests]);
 
   const handleExport = () => {
-    const rows = requests.map((r) => ({
-      Título: r.title,
-      Equipo: r.team,
-      Estado: r.status,
-      Prioridad: r.priority,
-      Solicitante: r.submittedBy.name,
-      'Email solicitante': r.submittedBy.email,
-      'Proceso actual': r.currentProcess,
-      'Tiempo demanda': r.timeSpent,
-      'Hs/semana': r.hoursPerWeek,
-      'Automatización deseada': r.desiredProcess,
-      'Beneficio esperado': r.expectedBenefit,
-      'Fecha creación': formatDate(r.createdAt),
-      'Fecha resolución': r.resolvedAt ? formatDate(r.resolvedAt) : '',
-      'Días resolución': r.resolvedAt ? daysBetween(r.createdAt, r.resolvedAt) : '',
-    }));
+    const rows = requests.map((r) => {
+      const s = r.hoursPerWeek ? computeSavings(r.hoursPerWeek) : null;
+      return {
+        Título: r.title,
+        Equipo: r.team,
+        Estado: r.status,
+        Prioridad: r.priority,
+        Solicitante: r.submittedBy.name,
+        'Email solicitante': r.submittedBy.email,
+        'Proceso actual': r.currentProcess,
+        'Hs/semana ahorradas': s?.weekly ?? '',
+        'Hs/mes ahorradas': s?.monthly ?? '',
+        'Hs/año ahorradas': s?.annual ?? '',
+        'Automatización deseada': r.desiredProcess,
+        'Beneficio esperado': r.expectedBenefit,
+        'Fecha creación': formatDate(r.createdAt),
+        'Fecha resolución': r.resolvedAt ? formatDate(r.resolvedAt) : '',
+        'Días resolución': r.resolvedAt ? daysBetween(r.createdAt, r.resolvedAt) : '',
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitudes');
@@ -256,14 +270,26 @@ export const StatsView: React.FC = () => {
           iconBg="bg-blue-100"
           sub={`sobre ${stats.byStatus[Status.DONE]} casos`}
         />
-        <KpiCard
-          label="Hs/semana ahorradas"
-          value={`~${stats.totalHoursSaved}hs`}
-          icon={TrendingUp}
-          color="bg-amber-50 text-amber-700"
-          iconBg="bg-amber-100"
-          sub="menos horas manuales por semana"
-        />
+        <div className="rounded-2xl p-5 bg-amber-50 text-amber-700">
+          <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center mb-3">
+            <TrendingUp size={18} />
+          </div>
+          <div className="text-xs font-bold opacity-80 uppercase tracking-wide mb-2">Tiempo recuperado</div>
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[10px] opacity-60">por semana</span>
+              <span className="text-lg font-black">~{stats.totalWeeklySaved}hs</span>
+            </div>
+            <div className="flex items-baseline justify-between border-t border-amber-200 pt-1.5">
+              <span className="text-[10px] opacity-60">por mes</span>
+              <span className="text-base font-black">~{stats.totalMonthlySaved}hs</span>
+            </div>
+            <div className="flex items-baseline justify-between border-t border-amber-200 pt-1.5">
+              <span className="text-[10px] opacity-60">por año</span>
+              <span className="text-base font-black">~{stats.totalAnnualSaved}hs</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Charts row */}
@@ -353,27 +379,115 @@ export const StatsView: React.FC = () => {
                   <th className="text-left pb-2 font-semibold">Solicitud</th>
                   <th className="text-left pb-2 font-semibold">Equipo</th>
                   <th className="text-center pb-2 font-semibold">Días</th>
-                  <th className="text-center pb-2 font-semibold">Hs ahorradas</th>
+                  <th className="text-center pb-2 font-semibold">Hs/sem</th>
+                  <th className="text-center pb-2 font-semibold">Hs/mes</th>
+                  <th className="text-center pb-2 font-semibold">Hs/año</th>
                   <th className="text-right pb-2 font-semibold">Fecha</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-50">
-                {stats.recent.map((r) => (
-                  <tr key={r.id} className="hover:bg-zinc-50 transition-colors">
-                    <td className="py-2 pr-4 font-medium text-zinc-800 max-w-xs truncate">{r.title}</td>
-                    <td className="py-2 pr-4 text-zinc-500">{r.team}</td>
-                    <td className="py-2 text-center font-bold text-indigo-600">
-                      {daysBetween(r.createdAt, r.resolvedAt) ?? '—'}
-                    </td>
-                    <td className="py-2 text-center font-bold text-emerald-600">
-                      {r.hoursPerWeek ? `${r.hoursPerWeek}hs/sem` : '—'}
-                    </td>
-                    <td className="py-2 text-right text-zinc-400">{formatDate(r.resolvedAt)}</td>
-                  </tr>
-                ))}
+                {stats.recent.map((r) => {
+                  const s = r.hoursPerWeek ? computeSavings(r.hoursPerWeek) : null;
+                  return (
+                    <tr key={r.id} className="hover:bg-zinc-50 transition-colors">
+                      <td className="py-2 pr-4 font-medium text-zinc-800 max-w-xs truncate">{r.title}</td>
+                      <td className="py-2 pr-4 text-zinc-500">{r.team}</td>
+                      <td className="py-2 text-center font-bold text-indigo-600">
+                        {daysBetween(r.createdAt, r.resolvedAt) ?? '—'}
+                      </td>
+                      <td className="py-2 text-center font-bold text-emerald-600">{s ? `${s.weekly}hs` : '—'}</td>
+                      <td className="py-2 text-center font-bold text-blue-600">{s ? `${s.monthly}hs` : '—'}</td>
+                      <td className="py-2 text-center font-bold text-amber-600">{s ? `${s.annual}hs` : '—'}</td>
+                      <td className="py-2 text-right text-zinc-400">{formatDate(r.resolvedAt)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Savings breakdown — individual + grouped */}
+      {stats.doneRequests.length > 0 && (
+        <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
+          <h3 className="text-sm font-black text-zinc-700 mb-1 flex items-center gap-2">
+            <TrendingUp size={14} className="text-amber-500" /> Tiempo recuperado por automatización
+          </h3>
+          <p className="text-xs text-zinc-400 mb-4">Todos los desarrollos completados y su impacto acumulado</p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-zinc-400 border-b border-zinc-100">
+                  <th className="text-left pb-2 font-semibold">Desarrollo</th>
+                  <th className="text-left pb-2 font-semibold hidden sm:table-cell">Equipo</th>
+                  <th className="text-center pb-2 font-semibold">hs/semana</th>
+                  <th className="text-center pb-2 font-semibold">hs/mes</th>
+                  <th className="text-center pb-2 font-semibold">hs/año</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-50">
+                {stats.doneRequests
+                  .filter((r) => r.hoursPerWeek > 0)
+                  .sort((a, b) => (b.hoursPerWeek || 0) - (a.hoursPerWeek || 0))
+                  .map((r) => {
+                    const s = computeSavings(r.hoursPerWeek);
+                    return (
+                      <tr key={r.id} className="hover:bg-zinc-50 transition-colors">
+                        <td className="py-2 pr-4 font-medium text-zinc-800 max-w-xs truncate">{r.title}</td>
+                        <td className="py-2 pr-4 text-zinc-500 hidden sm:table-cell">{r.team}</td>
+                        <td className="py-2 text-center">
+                          <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-lg font-bold">{s.weekly}hs</span>
+                        </td>
+                        <td className="py-2 text-center">
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-lg font-bold">{s.monthly}hs</span>
+                        </td>
+                        <td className="py-2 text-center">
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-lg font-bold">{s.annual}hs</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+              {stats.totalWeeklySaved > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-zinc-200 bg-zinc-50">
+                    <td className="py-2.5 pr-4 font-black text-zinc-900">Total acumulado</td>
+                    <td className="hidden sm:table-cell" />
+                    <td className="py-2.5 text-center">
+                      <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-lg font-black">~{stats.totalWeeklySaved}hs</span>
+                    </td>
+                    <td className="py-2.5 text-center">
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-lg font-black">~{stats.totalMonthlySaved}hs</span>
+                    </td>
+                    <td className="py-2.5 text-center">
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-lg font-black">~{stats.totalAnnualSaved}hs</span>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+
+          {/* By team breakdown */}
+          {stats.savingsByTeam.length > 1 && (
+            <div className="mt-5 pt-5 border-t border-zinc-100">
+              <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Por equipo</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {stats.savingsByTeam.map(({ team, weekly, monthly, annual }) => (
+                  <div key={team} className="bg-zinc-50 rounded-xl p-3 border border-zinc-100">
+                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-wide mb-2 truncate">{team}</p>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between"><span className="text-zinc-400">sem</span><span className="font-bold text-indigo-700">{weekly}hs</span></div>
+                      <div className="flex justify-between"><span className="text-zinc-400">mes</span><span className="font-bold text-blue-700">{monthly}hs</span></div>
+                      <div className="flex justify-between"><span className="text-zinc-400">año</span><span className="font-bold text-amber-700">{annual}hs</span></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

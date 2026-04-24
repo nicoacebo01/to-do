@@ -8,7 +8,7 @@ import {
   updateRequestPriority,
   deleteRequest,
 } from '../../services/requestService';
-import { IdeaRequest, Comment, Status, Priority } from '../../types';
+import { IdeaRequest, Comment, Status, Priority, FREQUENCY_LABELS, computeSavings, computeWeeklyHours } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatusBadge } from '../ui/StatusBadge';
 import { PriorityBadge } from '../ui/PriorityBadge';
@@ -160,14 +160,31 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
           {/* Proceso actual */}
           <Section title="Proceso actual" icon={Clock}>
             <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">{request.currentProcess}</p>
-            <div className="flex gap-4 mt-3 text-xs text-zinc-500">
-              <span className="flex items-center gap-1"><Clock size={11} /> {request.timeSpent}</span>
-              {request.hoursPerWeek > 0 && (
-                <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full font-semibold">
-                  ~{request.hoursPerWeek}hs/semana
-                </span>
-              )}
-            </div>
+            {(() => {
+              const hasNewFormat = request.timeSpentHours !== undefined && request.timeSpentFrequency !== undefined;
+              const weeklyHours = hasNewFormat
+                ? computeWeeklyHours(request.timeSpentHours!, request.timeSpentFrequency!)
+                : request.hoursPerWeek;
+              const savings = weeklyHours > 0 ? computeSavings(weeklyHours) : null;
+              return (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <Clock size={11} />
+                    {hasNewFormat
+                      ? <span><strong className="text-zinc-700">{request.timeSpentHours}hs</strong> {FREQUENCY_LABELS[request.timeSpentFrequency!]}</span>
+                      : <span>{request.timeSpent || `${request.hoursPerWeek}hs/semana`}</span>
+                    }
+                  </div>
+                  {savings && (
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold">~{savings.weekly}hs/sem</span>
+                      <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold">~{savings.monthly}hs/mes</span>
+                      <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-xs font-semibold">~{savings.annual}hs/año</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </Section>
 
           {/* Automatización deseada */}
@@ -360,9 +377,16 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
             <InfoRow label="Email" value={request.submittedBy.email} />
             <InfoRow label="Creado" value={formatDate(request.createdAt)} />
             <InfoRow label="Actualizado" value={formatDate(request.updatedAt)} />
-            {request.hoursPerWeek > 0 && (
-              <InfoRow label="Hs/semana" value={`~${request.hoursPerWeek}hs`} highlight />
-            )}
+            {request.hoursPerWeek > 0 && (() => {
+              const s = computeSavings(request.hoursPerWeek);
+              return (
+                <>
+                  <InfoRow label="Hs/semana" value={`~${s.weekly}hs`} highlight />
+                  <InfoRow label="Hs/mes" value={`~${s.monthly}hs`} highlight />
+                  <InfoRow label="Hs/año" value={`~${s.annual}hs`} highlight />
+                </>
+              );
+            })()}
           </div>
 
           {/* Ambassador panel */}

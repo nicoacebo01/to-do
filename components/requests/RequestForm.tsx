@@ -3,7 +3,7 @@ import { createRequest } from '../../services/requestService';
 import { uploadAttachment } from '../../services/storageService';
 import { useAuth } from '../../contexts/AuthContext';
 import { FileUploader } from './FileUploader';
-import { IdeaRequest, Team, Priority, Status, Attachment } from '../../types';
+import { IdeaRequest, Team, Priority, Status, Attachment, FrequencyUnit, FREQUENCY_LABELS, computeWeeklyHours } from '../../types';
 import { Lightbulb, ArrowLeft, Send, Loader2, Clock, Zap, Target, AlignLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -19,8 +19,8 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
     title: '',
     team: appUser?.team ?? Team.PLANIFICACION,
     currentProcess: '',
-    timeSpent: '',
-    hoursPerWeek: 0,
+    timeSpentHours: '' as string | number,
+    timeSpentFrequency: 'week' as FrequencyUnit,
     desiredProcess: '',
     expectedBenefit: '',
     priority: Priority.MEDIUM,
@@ -67,13 +67,15 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
         setUploading(false);
       }
 
+      const hours = parseFloat(String(form.timeSpentHours)) || 0;
       const data: Omit<IdeaRequest, 'id' | 'createdAt' | 'updatedAt' | 'statusHistory'> = {
         title: form.title.trim(),
         team: form.team,
         submittedBy: { email: appUser.email, name: appUser.name },
         currentProcess: form.currentProcess.trim(),
-        timeSpent: form.timeSpent.trim(),
-        hoursPerWeek: form.hoursPerWeek,
+        timeSpentHours: hours,
+        timeSpentFrequency: form.timeSpentFrequency,
+        hoursPerWeek: computeWeeklyHours(hours, form.timeSpentFrequency),
         desiredProcess: form.desiredProcess.trim(),
         expectedBenefit: form.expectedBenefit.trim(),
         priority: form.priority,
@@ -192,33 +194,47 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>
-                ¿Cuánto tiempo demanda? <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={form.timeSpent}
-                onChange={(e) => set('timeSpent', e.target.value)}
-                placeholder="Ej: 2hs por cierre, 30min/día... (y eso en los días buenos)"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Horas semanales estimadas</label>
+          <div>
+            <label className={labelClass}>
+              <Clock size={12} /> Tiempo que demanda actualmente <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
               <input
                 type="number"
-                min={0}
+                required
+                min={0.5}
                 step={0.5}
-                value={form.hoursPerWeek || ''}
-                onChange={(e) => set('hoursPerWeek', parseFloat(e.target.value) || 0)}
-                placeholder="0"
-                className={inputClass}
+                value={form.timeSpentHours}
+                onChange={(e) => set('timeSpentHours', e.target.value)}
+                placeholder="Ej: 2"
+                className={`${inputClass} w-28 flex-shrink-0`}
               />
-              <p className="text-[10px] text-zinc-400 mt-1">Para medir cuánta vida van a recuperar</p>
+              <select
+                value={form.timeSpentFrequency}
+                onChange={(e) => set('timeSpentFrequency', e.target.value)}
+                className={`${inputClass} flex-1`}
+              >
+                {(Object.keys(FREQUENCY_LABELS) as FrequencyUnit[]).map((f) => (
+                  <option key={f} value={f}>{FREQUENCY_LABELS[f]}</option>
+                ))}
+              </select>
             </div>
+            {parseFloat(String(form.timeSpentHours)) > 0 && (() => {
+              const hrs = parseFloat(String(form.timeSpentHours));
+              const weekly = computeWeeklyHours(hrs, form.timeSpentFrequency);
+              const monthly = Math.round(weekly * 4.33 * 10) / 10;
+              const annual = Math.round(weekly * 52);
+              return (
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5">
+                  <span className="font-black">≈</span>
+                  <span><strong>{weekly}hs</strong>/semana</span>
+                  <span className="text-emerald-400">·</span>
+                  <span><strong>{monthly}hs</strong>/mes</span>
+                  <span className="text-emerald-400">·</span>
+                  <span><strong>{annual}hs</strong>/año recuperadas</span>
+                </div>
+              );
+            })()}
           </div>
 
           <div>

@@ -55,10 +55,10 @@ export const RequestCard: React.FC<Props> = ({ request, onClick }) => {
             <User size={11} />
             {request.submittedBy.name}
           </span>
-          {request.timeSpent && (
-            <span className="flex items-center gap-1">
+          {request.hoursPerWeek > 0 && (
+            <span className="flex items-center gap-1 text-amber-600 font-semibold">
               <Clock size={11} />
-              {request.timeSpent}
+              ~{request.hoursPerWeek}hs/sem
             </span>
           )}
           {request.attachments.length > 0 && (

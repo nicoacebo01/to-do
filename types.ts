@@ -1,5 +1,27 @@
 import { Timestamp } from 'firebase/firestore';
 
+export type FrequencyUnit = 'day' | 'week' | 'month';
+
+export const FREQUENCY_LABELS: Record<FrequencyUnit, string> = {
+  day: 'por día',
+  week: 'por semana',
+  month: 'por mes',
+};
+
+export function computeWeeklyHours(hours: number, freq: FrequencyUnit): number {
+  if (freq === 'day') return Math.round(hours * 5 * 10) / 10;
+  if (freq === 'week') return hours;
+  return Math.round((hours / 4.33) * 10) / 10;
+}
+
+export function computeSavings(weeklyHours: number): { weekly: number; monthly: number; annual: number } {
+  return {
+    weekly: Math.round(weeklyHours * 10) / 10,
+    monthly: Math.round(weeklyHours * 4.33 * 10) / 10,
+    annual: Math.round(weeklyHours * 52),
+  };
+}
+
 export enum Team {
   PLANIFICACION = 'Planificación Financiera',
   CREDITOS = 'Créditos y Cobranzas',
@@ -47,7 +69,9 @@ export interface IdeaRequest {
     name: string;
   };
   currentProcess: string;
-  timeSpent: string;
+  timeSpent?: string;
+  timeSpentHours?: number;
+  timeSpentFrequency?: FrequencyUnit;
   hoursPerWeek: number;
   desiredProcess: string;
   expectedBenefit: string;
