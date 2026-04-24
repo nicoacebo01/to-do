@@ -1,45 +1,48 @@
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from './firebase';
 import { Attachment } from '../types';
 
+const CLOUD_NAME = 'dmzvnbrww';
+const UPLOAD_PRESET = 'to-do finanzas';
+
 export async function uploadAttachment(
-  requestId: string,
+  _requestId: string,
   file: File,
   onProgress?: (pct: number) => void
 ): Promise<Attachment> {
-  const path = `idea_requests/${requestId}/${Date.now()}_${file.name}`;
-  const storageRef = ref(storage, path);
-  const task = uploadBytesResumable(storageRef, file);
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', UPLOAD_PRESET);
+  formData.append('folder', 'finance-ideas-hub');
 
   return new Promise((resolve, reject) => {
-    task.on(
-      'state_changed',
-      (snap) => {
-        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
         onProgress?.(pct);
-      },
-      reject,
-      async () => {
-        const url = await getDownloadURL(task.snapshot.ref);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText);
         resolve({
           name: file.name,
-          url,
+          url: data.secure_url,
           contentType: file.type,
           size: file.size,
           uploadedAt: new Date().toISOString(),
         });
+      } else {
+        reject(new Error('Error al subir el archivo a Cloudinary'));
       }
-    );
-  });
-}
+    };
 
-export async function deleteAttachment(url: string): Promise<void> {
-  try {
-    const storageRef = ref(storage, url);
-    await deleteObject(storageRef);
-  } catch {
-    // Ignore if already deleted
-  }
+    xhr.onerror = () => reject(new Error('Error de red al subir el archivo'));
+
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+    xhr.send(formData);
+  });
 }
 
 export function formatFileSize(bytes: number): string {
