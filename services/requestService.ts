@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   onSnapshot,
@@ -128,16 +129,20 @@ export function subscribeToUsers(callback: (users: AppUser[]) => void): () => vo
 }
 
 export async function addUser(user: Omit<AppUser, 'addedAt'>): Promise<void> {
-  await addDoc(collection(db, 'idea_users'), {
+  // Usamos el email como ID para evitar duplicados
+  const docRef = doc(db, 'idea_users', user.email.toLowerCase());
+  await setDoc(docRef, {
     ...user,
+    email: user.email.toLowerCase(),
     addedAt: serverTimestamp(),
-  });
+  }, { merge: true });
+}
+
+export async function updateUserRole(email: string, role: string): Promise<void> {
+  const docRef = doc(db, 'idea_users', email.toLowerCase());
+  await updateDoc(docRef, { role });
 }
 
 export async function removeUser(email: string): Promise<void> {
-  const snap = await getDocs(collection(db, 'idea_users'));
-  const docToDelete = snap.docs.find((d) => d.data().email === email);
-  if (docToDelete) {
-    await deleteDoc(doc(db, 'idea_users', docToDelete.id));
-  }
+  await deleteDoc(doc(db, 'idea_users', email.toLowerCase()));
 }

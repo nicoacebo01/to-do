@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { AppUser, UserRole } from '../types';
 
@@ -32,13 +32,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    let unsubUsers: (() => void) | null = null;
+    let unsubUser: (() => void) | null = null;
 
     const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      if (unsubUsers) {
-        unsubUsers();
-        unsubUsers = null;
-      }
+      if (unsubUser) { unsubUser(); unsubUser = null; }
 
       if (!firebaseUser || !firebaseUser.email) {
         setState({ firebaseUser: null, appUser: null, role: null, loading: false, isAmbassador: false });
@@ -46,19 +43,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const emailLower = firebaseUser.email.toLowerCase();
-      const q = query(collection(db, 'idea_users'), where('email', '==', emailLower));
-
-      unsubUsers = onSnapshot(q, (snap) => {
-        if (snap.empty) {
-          setState({
-            firebaseUser,
-            appUser: null,
-            role: null,
-            loading: false,
-            isAmbassador: false,
-          });
+      // El documento tiene como ID el email del usuario
+      unsubUser = onSnapshot(doc(db, 'idea_users', emailLower), (snap) => {
+        if (!snap.exists()) {
+          setState({ firebaseUser, appUser: null, role: null, loading: false, isAmbassador: false });
         } else {
-          const appUser = snap.docs[0].data() as AppUser;
+          const appUser = snap.data() as AppUser;
           setState({
             firebaseUser,
             appUser,
@@ -72,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       unsubAuth();
-      if (unsubUsers) unsubUsers();
+      if (unsubUser) unsubUser();
     };
   }, []);
 
