@@ -158,7 +158,7 @@ const RegisterForm: React.FC<{
           <label className={labelClass}>Nombre completo</label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-            <input required value={name} onChange={e => setName(e.target.value)} placeholder="Juan Pérez" className={`${inputClass} pl-9`} />
+            <input required value={name} onChange={e => setName(e.target.value)} placeholder="Juan Pérez (o quien seas)" className={`${inputClass} pl-9`} />
           </div>
         </div>
 
@@ -175,7 +175,7 @@ const RegisterForm: React.FC<{
           <label className={labelClass}>Contraseña</label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-            <input required type="password" minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className={`${inputClass} pl-9`} />
+            <input required type="password" minLength={6} value={password} onChange={e => setPassword(e.target.value)} placeholder="Algo que no sea '123456', por favor" className={`${inputClass} pl-9`} />
           </div>
         </div>
 
@@ -183,7 +183,7 @@ const RegisterForm: React.FC<{
           <label className={labelClass}>Confirmar contraseña</label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-            <input required type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Repetí la contraseña" className={`${inputClass} pl-9 ${passwordMismatch ? 'border-red-300 focus:ring-red-400' : ''}`} />
+            <input required type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Exactamente igual, sin trampa" className={`${inputClass} pl-9 ${passwordMismatch ? 'border-red-300 focus:ring-red-400' : ''}`} />
           </div>
           {passwordMismatch && <p className="text-xs text-red-500 mt-1">Las contraseñas no coinciden</p>}
         </div>
@@ -229,7 +229,7 @@ const ForgotForm: React.FC<{
         </button>
         <h2 className="text-lg font-bold text-zinc-800">Recuperar contraseña</h2>
       </div>
-      <p className="text-sm text-zinc-500 mb-4">Ingresá tu email y te enviamos un link para restablecer tu contraseña.</p>
+      <p className="text-sm text-zinc-500 mb-4">Ingresá tu email y te mandamos un link para que puedas volver. Pasa en las mejores familias.</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <EmailField value={email} onChange={setEmail} domainWarning={domainWarning} />
         {error && <ErrorMsg text={error} />}
@@ -246,7 +246,7 @@ const ForgotSent: React.FC<{ onBack: () => void }> = ({ onBack }) => (
     </div>
     <h3 className="font-black text-zinc-900 text-lg">¡Email enviado!</h3>
     <p className="text-sm text-zinc-500 mt-2 leading-relaxed">
-      Revisá tu bandeja de entrada y seguí las instrucciones para restablecer tu contraseña.
+      Revisá tu bandeja (y el spam, por si acaso) y seguí las instrucciones para restablecer tu contraseña.
     </p>
     <button onClick={onBack} className="mt-6 text-sm font-bold text-indigo-600 hover:underline">
       Volver al login

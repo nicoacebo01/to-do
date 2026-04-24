@@ -16,7 +16,7 @@ import { TeamBadge } from '../ui/TeamBadge';
 import {
   ArrowLeft, Clock, Paperclip, Send, Loader2, Lightbulb, Wrench,
   PartyPopper, FileText, Image, CheckCircle2, ChevronRight,
-  StickyNote, Trash2, AlertTriangle,
+  StickyNote, Trash2, AlertTriangle, MessageCircle, Shield,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatFileSize, isImageType } from '../../services/storageService';
@@ -85,6 +85,7 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
     await addCommentToRequest(requestId, {
       authorEmail: appUser.email,
       authorName: appUser.name,
+      authorRole: appUser.role,
       text: newComment.trim(),
     });
     setNewComment('');
@@ -217,43 +218,71 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
             </Section>
           )}
 
-          {/* Comments */}
-          <Section title="Comentarios" icon={Send}>
+          {/* Messages */}
+          <Section title={`Mensajes y aclaraciones${comments.length > 0 ? ` (${comments.length})` : ''}`} icon={MessageCircle}>
             {comments.length === 0 ? (
-              <p className="text-sm text-zinc-400 text-center py-4">Sin comentarios aún. Sé el primero en comentar.</p>
+              <p className="text-sm text-zinc-400 text-center py-6">
+                Sin mensajes aún. Usá este espacio para hacer consultas o aclaraciones.
+              </p>
             ) : (
-              <div className="space-y-3 mb-4">
-                {comments.map((c) => (
-                  <div key={c.id} className="flex gap-3">
-                    <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-indigo-600">
-                      {c.authorName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xs font-bold text-zinc-800">{c.authorName}</span>
-                        <span className="text-[10px] text-zinc-400">{formatDate(c.createdAt, true)}</span>
+              <div className="space-y-2.5 mb-4">
+                {comments.map((c) => {
+                  const isAmbassadorMsg = c.authorRole === 'AMBASSADOR';
+                  const isSelf = c.authorEmail === appUser?.email;
+                  return (
+                    <div
+                      key={c.id}
+                      className={`rounded-xl p-3 border ${
+                        isAmbassadorMsg
+                          ? 'bg-amber-50 border-amber-200'
+                          : 'bg-zinc-50 border-zinc-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
+                          isAmbassadorMsg ? 'bg-amber-200 text-amber-800' : 'bg-indigo-100 text-indigo-700'
+                        }`}>
+                          {c.authorName.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-xs font-bold text-zinc-900">{c.authorName}</span>
+                        {isAmbassadorMsg && (
+                          <span className="flex items-center gap-0.5 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold border border-amber-200">
+                            <Shield size={9} /> Embajador
+                          </span>
+                        )}
+                        {isSelf && (
+                          <span className="text-[10px] text-zinc-400 italic">vos</span>
+                        )}
+                        <span className="text-[10px] text-zinc-400 ml-auto">{formatDate(c.createdAt, true)}</span>
                       </div>
-                      <p className="text-sm text-zinc-600 mt-0.5 leading-relaxed">{c.text}</p>
+                      <p className="text-sm text-zinc-700 leading-relaxed mt-1.5 pl-8">{c.text}</p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
             {appUser && (
-              <div className="flex gap-2 mt-3">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendComment()}
-                  placeholder="Escribí un comentario..."
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+              <div className="flex gap-2 mt-3 items-start">
+                <div className="flex-1">
+                  <textarea
+                    rows={2}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendComment()}
+                    placeholder={
+                      isAmbassador
+                        ? 'Escribí una respuesta, aclaración o pedido...'
+                        : 'Escribí una consulta o aclaración al embajador...'
+                    }
+                    className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  />
+                  <p className="text-[10px] text-zinc-400 mt-1">Enter para enviar · Shift+Enter para nueva línea</p>
+                </div>
                 <button
                   onClick={handleSendComment}
                   disabled={!newComment.trim() || sendingComment}
-                  className="p-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl transition-all"
+                  className="p-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl transition-all mt-0.5"
                 >
                   {sendingComment ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </button>

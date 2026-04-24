@@ -11,6 +11,7 @@ import {
   Timestamp,
   serverTimestamp,
   getDocs,
+  increment,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { IdeaRequest, Status, Comment, AppUser, StatusChange } from '../types';
@@ -117,6 +118,10 @@ export async function addCommentToRequest(
   await addDoc(collection(db, REQUESTS_COL, requestId, 'comments'), {
     ...comment,
     createdAt: serverTimestamp(),
+  });
+  await updateDoc(doc(db, REQUESTS_COL, requestId), {
+    commentCount: increment(1),
+    updatedAt: serverTimestamp(),
   });
 }
 

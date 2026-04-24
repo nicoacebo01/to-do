@@ -114,7 +114,7 @@ export const DashboardView: React.FC<Props> = ({ onOpenDetail }) => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por título, proceso o persona..."
+              placeholder="Buscá por título, proceso... o acordate cómo se llamaba la idea esa..."
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
@@ -196,10 +196,10 @@ export const DashboardView: React.FC<Props> = ({ onOpenDetail }) => {
               <Filter size={28} className="text-zinc-300" />
             </div>
             <p className="text-zinc-500 font-semibold">
-              {hasFilters ? 'No hay resultados con esos filtros' : 'Todavía no hay solicitudes'}
+              {hasFilters ? 'Nada por acá... probá con menos filtros' : 'Todavía no hay ideas. Alguien tiene que romper el hielo.'}
             </p>
             {!hasFilters && (
-              <p className="text-xs text-zinc-400 mt-2">Cargá la primera idea usando el botón "Nueva idea"</p>
+              <p className="text-xs text-zinc-400 mt-2">Animarse cuesta poco. Usá el botón "Nueva idea" y sé el héroe del equipo.</p>
             )}
           </div>
         </div>

@@ -220,7 +220,7 @@ export const StatsView: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl font-black text-zinc-900">Estadísticas</h1>
-            <p className="text-xs text-zinc-500">Visión global del proceso</p>
+            <p className="text-xs text-zinc-500">El estado real de las cosas (sin filtros)</p>
           </div>
         </div>
         <button
@@ -262,7 +262,7 @@ export const StatsView: React.FC = () => {
           icon={TrendingUp}
           color="bg-amber-50 text-amber-700"
           iconBg="bg-amber-100"
-          sub="en procesos completados"
+          sub="menos horas manuales por semana"
         />
       </div>
 
@@ -296,7 +296,7 @@ export const StatsView: React.FC = () => {
         {stats.stale.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
             <h3 className="text-sm font-black text-amber-800 mb-3 flex items-center gap-2">
-              ⚠️ Ideas sin atender (+7 días)
+              ⚠️ Ideas esperando una señal de vida (+7 días)
               <span className="ml-auto bg-amber-500 text-white text-xs font-black px-2 py-0.5 rounded-full">
                 {stats.stale.length}
               </span>

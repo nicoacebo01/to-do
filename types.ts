@@ -55,6 +55,7 @@ export interface IdeaRequest {
   status: Status;
   attachments: Attachment[];
   ambassadorNotes: string;
+  commentCount?: number;
   statusHistory: StatusChange[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -65,6 +66,7 @@ export interface Comment {
   id: string;
   authorEmail: string;
   authorName: string;
+  authorRole?: UserRole;
   text: string;
   createdAt: Timestamp;
 }

@@ -9,9 +9,12 @@ interface Props {
   onRemove: (index: number) => void;
   uploading?: boolean;
   pendingFiles?: File[];
+  accept?: string;
+  hint?: string;
 }
 
 const ACCEPTED = '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.txt,.csv';
+const IMAGES_ACCEPTED = '.png,.jpg,.jpeg,.webp,.gif';
 
 export const FileUploader: React.FC<Props> = ({
   attachments,
@@ -19,9 +22,14 @@ export const FileUploader: React.FC<Props> = ({
   onRemove,
   uploading = false,
   pendingFiles = [],
+  accept,
+  hint,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+
+  const acceptValue = accept ?? ACCEPTED;
+  const hintText = hint ?? 'PDF, Excel, Word, imágenes (máx. 10 MB c/u)';
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -52,12 +60,12 @@ export const FileUploader: React.FC<Props> = ({
         <p className="text-sm text-zinc-500">
           Arrastrá archivos o <span className="text-indigo-600 font-semibold">hacé clic para seleccionar</span>
         </p>
-        <p className="text-xs text-zinc-400 mt-1">PDF, Excel, Word, imágenes (máx. 10 MB c/u)</p>
+        <p className="text-xs text-zinc-400 mt-1">{hintText}</p>
         <input
           ref={inputRef}
           type="file"
           multiple
-          accept={ACCEPTED}
+          accept={acceptValue}
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />

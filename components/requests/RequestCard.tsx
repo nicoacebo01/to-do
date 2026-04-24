@@ -3,7 +3,7 @@ import { IdeaRequest } from '../../types';
 import { StatusBadge } from '../ui/StatusBadge';
 import { PriorityBadge } from '../ui/PriorityBadge';
 import { TeamBadge } from '../ui/TeamBadge';
-import { Clock, Paperclip, User, ChevronRight } from 'lucide-react';
+import { Clock, Paperclip, User, ChevronRight, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Props {
@@ -65,6 +65,12 @@ export const RequestCard: React.FC<Props> = ({ request, onClick }) => {
             <span className="flex items-center gap-1">
               <Paperclip size={11} />
               {request.attachments.length}
+            </span>
+          )}
+          {(request.commentCount ?? 0) > 0 && (
+            <span className="flex items-center gap-1 text-indigo-500">
+              <MessageCircle size={11} />
+              {request.commentCount}
             </span>
           )}
         </div>

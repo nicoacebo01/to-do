@@ -26,8 +26,10 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
     priority: Priority.MEDIUM,
   });
 
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [pendingFilesCurrent, setPendingFilesCurrent] = useState<File[]>([]);
+  const [attachmentsCurrent, setAttachmentsCurrent] = useState<Attachment[]>([]);
+  const [pendingFilesDesired, setPendingFilesDesired] = useState<File[]>([]);
+  const [attachmentsDesired, setAttachmentsDesired] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -35,9 +37,13 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
   const set = (field: string, value: string | number) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  const handleAddFiles = (files: File[]) => setPendingFiles((prev) => [...prev, ...files]);
-  const handleRemoveAttachment = (index: number) =>
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  const handleAddCurrentFiles = (files: File[]) => setPendingFilesCurrent((prev) => [...prev, ...files]);
+  const handleRemoveCurrentAttachment = (index: number) =>
+    setAttachmentsCurrent((prev) => prev.filter((_, i) => i !== index));
+
+  const handleAddDesiredFiles = (files: File[]) => setPendingFilesDesired((prev) => [...prev, ...files]);
+  const handleRemoveDesiredAttachment = (index: number) =>
+    setAttachmentsDesired((prev) => prev.filter((_, i) => i !== index));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,12 +54,13 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
     try {
       // Create the request first to get an ID
       const tempId = `temp_${Date.now()}`;
-      let uploadedAttachments: Attachment[] = [...attachments];
+      let uploadedAttachments: Attachment[] = [...attachmentsCurrent, ...attachmentsDesired];
 
       // Upload pending files
-      if (pendingFiles.length > 0) {
+      const allPending = [...pendingFilesCurrent, ...pendingFilesDesired];
+      if (allPending.length > 0) {
         setUploading(true);
-        for (const file of pendingFiles) {
+        for (const file of allPending) {
           const att = await uploadAttachment(tempId, file);
           uploadedAttachments.push(att);
         }
@@ -110,7 +117,7 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
           </div>
           <div>
             <h1 className="text-xl font-black text-zinc-900">Nueva solicitud</h1>
-            <p className="text-xs text-zinc-500">Contanos tu idea o mejora</p>
+            <p className="text-xs text-zinc-500">¿Qué proceso te está volviendo loco? Contanos.</p>
           </div>
         </div>
       </div>
@@ -180,7 +187,7 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
               rows={4}
               value={form.currentProcess}
               onChange={(e) => set('currentProcess', e.target.value)}
-              placeholder="Describí el proceso paso a paso tal como lo realizan actualmente..."
+              placeholder="Describí el proceso paso a paso, tal como lo hacen hoy. Sé claro, detallista... ¡y ponele onda!"
               className={inputClass}
             />
           </div>
@@ -195,7 +202,7 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
                 required
                 value={form.timeSpent}
                 onChange={(e) => set('timeSpent', e.target.value)}
-                placeholder="Ej: 2hs por cierre, 30min/día"
+                placeholder="Ej: 2hs por cierre, 30min/día... (y eso en los días buenos)"
                 className={inputClass}
               />
             </div>
@@ -210,8 +217,22 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
                 placeholder="0"
                 className={inputClass}
               />
-              <p className="text-[10px] text-zinc-400 mt-1">Para calcular el impacto total</p>
+              <p className="text-[10px] text-zinc-400 mt-1">Para medir cuánta vida van a recuperar</p>
             </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Capturas de pantalla</label>
+            <p className="text-xs text-zinc-400 mb-2">Adjuntá capturas del proceso actual para dar más contexto.</p>
+            <FileUploader
+              attachments={attachmentsCurrent}
+              onAdd={handleAddCurrentFiles}
+              onRemove={handleRemoveCurrentAttachment}
+              uploading={uploading}
+              pendingFiles={pendingFilesCurrent}
+              accept=".png,.jpg,.jpeg,.webp,.gif"
+              hint="Imágenes PNG, JPG, WebP, GIF (máx. 10 MB c/u)"
+            />
           </div>
         </div>
 
@@ -230,7 +251,7 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
               rows={4}
               value={form.desiredProcess}
               onChange={(e) => set('desiredProcess', e.target.value)}
-              placeholder="Describí cómo imaginás que debería funcionar el proceso automatizado..."
+              placeholder="Soñá en grande. ¿Cómo sería esto si funcionara solo mientras tomás el café?"
               className={inputClass}
             />
           </div>
@@ -244,27 +265,24 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
               rows={3}
               value={form.expectedBenefit}
               onChange={(e) => set('expectedBenefit', e.target.value)}
-              placeholder="¿Qué problemas resolvería? ¿Qué errores eliminaría? ¿Qué tiempo ahorraría?"
+              placeholder="¿Cuántos dolores de cabeza menos? ¿Cuántas horas recuperadas? ¿Cuántos Excels manuales evitados? Dale, sé ambicioso."
               className={inputClass}
             />
           </div>
-        </div>
 
-        {/* Card 4: Adjuntos */}
-        <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6 space-y-4">
-          <h2 className="text-sm font-black text-zinc-500 uppercase tracking-widest">
-            Adjuntos y capturas
-          </h2>
-          <p className="text-xs text-zinc-500">
-            Podés adjuntar capturas de pantalla, archivos Excel, PDFs o cualquier material que ayude a entender el proceso.
-          </p>
-          <FileUploader
-            attachments={attachments}
-            onAdd={handleAddFiles}
-            onRemove={handleRemoveAttachment}
-            uploading={uploading}
-            pendingFiles={pendingFiles}
-          />
+          <div>
+            <label className={labelClass}>Imágenes, esquemas o flujos</label>
+            <p className="text-xs text-zinc-400 mb-2">Adjuntá mockups, diagramas de flujo, capturas de referencia o cualquier imagen que ayude a entender cómo querés que funcione.</p>
+            <FileUploader
+              attachments={attachmentsDesired}
+              onAdd={handleAddDesiredFiles}
+              onRemove={handleRemoveDesiredAttachment}
+              uploading={uploading}
+              pendingFiles={pendingFilesDesired}
+              accept=".png,.jpg,.jpeg,.webp,.gif,.pdf"
+              hint="Imágenes o PDF (máx. 10 MB c/u)"
+            />
+          </div>
         </div>
 
         {error && (
