@@ -30,15 +30,25 @@ export const UserManager: React.FC = () => {
 
   const handleRemove = async (email: string) => {
     setRemoving(email);
-    await removeUser(email);
-    setRemoving(null);
-    setConfirmRemove(null);
+    try {
+      await removeUser(email);
+      setConfirmRemove(null);
+    } catch (err) {
+      console.error('Error eliminando usuario:', err);
+    } finally {
+      setRemoving(null);
+    }
   };
 
   const handleRoleChange = async (email: string, role: UserRole) => {
     setChangingRole(email);
-    await updateUserRole(email, role);
-    setChangingRole(null);
+    try {
+      await updateUserRole(email, role);
+    } catch (err) {
+      console.error('Error cambiando rol:', err);
+    } finally {
+      setChangingRole(null);
+    }
   };
 
   return (
