@@ -15,6 +15,7 @@ export const UserManager: React.FC = () => {
   const [removing, setRemoving] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [changingRole, setChangingRole] = useState<string | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = subscribeToUsers((data) => {
@@ -42,10 +43,12 @@ export const UserManager: React.FC = () => {
 
   const handleRoleChange = async (email: string, role: UserRole) => {
     setChangingRole(email);
+    setRoleError(null);
     try {
       await updateUserRole(email, role);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error cambiando rol:', err);
+      setRoleError(err?.message ?? 'No se pudo cambiar el rol. Verificá los permisos de Firestore.');
     } finally {
       setChangingRole(null);
     }
@@ -69,6 +72,14 @@ export const UserManager: React.FC = () => {
         Los usuarios se registran solos desde la pantalla de login con su email <strong>@lartirigoyen.com</strong>.
         Acá podés cambiar su rol o eliminarlos.
       </div>
+
+      {/* Role error */}
+      {roleError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-xs text-red-700 flex items-start gap-2">
+          <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+          <span><strong>Error al cambiar rol:</strong> {roleError}</span>
+        </div>
+      )}
 
       {/* User list */}
       {loading ? (
