@@ -124,6 +124,7 @@ export const StatsView: React.FC = () => {
       [Status.IDEA]: requests.filter((r) => r.status === Status.IDEA).length,
       [Status.IN_PROGRESS]: requests.filter((r) => r.status === Status.IN_PROGRESS).length,
       [Status.DONE]: requests.filter((r) => r.status === Status.DONE).length,
+      [Status.DISMISSED]: requests.filter((r) => r.status === Status.DISMISSED).length,
     };
 
     const completionRate = total > 0 ? Math.round((byStatus[Status.DONE] / total) * 100) : 0;
@@ -157,7 +158,7 @@ export const StatsView: React.FC = () => {
     }));
 
     // By priority (pending only)
-    const pending = requests.filter((r) => r.status !== Status.DONE);
+    const pending = requests.filter((r) => r.status !== Status.DONE && r.status !== Status.DISMISSED);
     const byPriority = Object.values(Priority).map((p) => ({
       label: p,
       value: pending.filter((r) => r.priority === p).length,
@@ -305,6 +306,7 @@ export const StatsView: React.FC = () => {
               { value: stats.byStatus[Status.IDEA], color: '#f59e0b', label: '💡 Tengo una idea' },
               { value: stats.byStatus[Status.IN_PROGRESS], color: '#3b82f6', label: '🔧 En progreso' },
               { value: stats.byStatus[Status.DONE], color: '#10b981', label: '🎉 Logramos' },
+              { value: stats.byStatus[Status.DISMISSED], color: '#ef4444', label: '🚫 Desestimadas' },
             ]}
           />
         </div>

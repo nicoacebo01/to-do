@@ -1,6 +1,6 @@
 import React from 'react';
 import { Status } from '../../types';
-import { Lightbulb, Wrench, PartyPopper } from 'lucide-react';
+import { Lightbulb, Wrench, PartyPopper, Ban } from 'lucide-react';
 
 const CONFIG: Record<Status, { label: string; icon: React.FC<{ size?: number }>; classes: string }> = {
   [Status.IDEA]: {
@@ -17,6 +17,11 @@ const CONFIG: Record<Status, { label: string; icon: React.FC<{ size?: number }>;
     label: '¡Lo logramos!',
     icon: PartyPopper,
     classes: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  },
+  [Status.DISMISSED]: {
+    label: 'Desestimada',
+    icon: Ban,
+    classes: 'bg-red-100 text-red-700 border-red-200',
   },
 };
 

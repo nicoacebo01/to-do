@@ -33,6 +33,7 @@ export enum Status {
   IDEA = 'Tengo una idea',
   IN_PROGRESS = 'Lo estamos laburando',
   DONE = '¡Lo logramos!',
+  DISMISSED = 'Desestimada',
 }
 
 export enum Priority {
@@ -65,6 +66,7 @@ export interface StatusChange {
   changedAt: Timestamp;
   changedBy: string;
   changedByName: string;
+  reason?: string;
 }
 
 export interface IdeaRequest {
@@ -99,7 +101,7 @@ export interface IdeaRequest {
 // pasa al miembro, miembro responde -> vuelve al embajador). Sin mensajes, arranca
 // esperando al embajador. Los cambios de estado no la mueven.
 export function isMyTurn(request: IdeaRequest, userEmail: string | undefined, isAmbassador: boolean): boolean {
-  if (!userEmail || request.status === Status.DONE) return false;
+  if (!userEmail || request.status === Status.DONE || request.status === Status.DISMISSED) return false;
   const waitingOn = request.waitingOn ?? 'AMBASSADOR';
   if (isAmbassador) {
     return waitingOn === 'AMBASSADOR' && (!request.assignedTo || request.assignedTo.email === userEmail);

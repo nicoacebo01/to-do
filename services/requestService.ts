@@ -71,7 +71,8 @@ export async function updateRequestStatus(
   changedByName: string,
   currentHistory: StatusChange[],
   currentStatus: Status,
-  ambassadorNotes?: string
+  ambassadorNotes?: string,
+  reason?: string
 ): Promise<void> {
   const change: StatusChange = {
     from: currentStatus,
@@ -79,6 +80,7 @@ export async function updateRequestStatus(
     changedAt: Timestamp.now(),
     changedBy,
     changedByName,
+    ...(reason ? { reason } : {}),
   };
   const updates: Record<string, unknown> = {
     status: newStatus,

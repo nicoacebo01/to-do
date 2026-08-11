@@ -18,7 +18,7 @@ import { TeamBadge } from '../ui/TeamBadge';
 import {
   ArrowLeft, Clock, Paperclip, Send, Loader2, Lightbulb, Wrench,
   PartyPopper, FileText, Image, CheckCircle2, ChevronRight,
-  StickyNote, Trash2, AlertTriangle, MessageCircle, Shield, Bell, UserCheck,
+  StickyNote, Trash2, AlertTriangle, MessageCircle, Shield, Bell, UserCheck, Ban, RotateCcw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatFileSize, isImageType } from '../../services/storageService';
@@ -51,6 +51,7 @@ const STATUS_ICONS: Record<Status, React.FC<{ size?: number; className?: string 
   [Status.IDEA]: Lightbulb,
   [Status.IN_PROGRESS]: Wrench,
   [Status.DONE]: PartyPopper,
+  [Status.DISMISSED]: Ban,
 };
 
 export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
@@ -65,6 +66,9 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [showDismissForm, setShowDismissForm] = useState(false);
+  const [dismissReason, setDismissReason] = useState('');
+  const [dismissing, setDismissing] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToRequests((reqs) => {
@@ -133,6 +137,39 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
     setAssigning(true);
     await unassignRequest(requestId);
     setAssigning(false);
+  };
+
+  const handleDismiss = async () => {
+    if (!request || !appUser || !dismissReason.trim()) return;
+    setDismissing(true);
+    await updateRequestStatus(
+      requestId,
+      Status.DISMISSED,
+      appUser.email,
+      appUser.name,
+      request.statusHistory ?? [],
+      request.status,
+      ambassadorNotes,
+      dismissReason.trim()
+    );
+    setDismissReason('');
+    setShowDismissForm(false);
+    setDismissing(false);
+  };
+
+  const handleReopen = async () => {
+    if (!request || !appUser) return;
+    setChangingStatus(true);
+    await updateRequestStatus(
+      requestId,
+      Status.IDEA,
+      appUser.email,
+      appUser.name,
+      request.statusHistory ?? [],
+      request.status,
+      ambassadorNotes
+    );
+    setChangingStatus(false);
   };
 
   if (!request) {
@@ -389,6 +426,26 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
                 </p>
               </div>
             )}
+
+            {/* Dismiss reason */}
+            {request.status === Status.DISMISSED && (() => {
+              const change = [...(request.statusHistory ?? [])].reverse().find((h) => h.to === Status.DISMISSED);
+              return (
+                <div className="bg-red-50 border border-red-100 rounded-xl p-3 mt-2">
+                  <p className="text-xs text-red-700 font-bold flex items-center gap-1.5">
+                    <Ban size={12} /> Desestimada
+                  </p>
+                  {change?.reason && (
+                    <p className="text-xs text-zinc-600 mt-1.5 leading-relaxed">{change.reason}</p>
+                  )}
+                  {change && (
+                    <p className="text-[10px] text-zinc-400 mt-1.5">
+                      por {change.changedByName} · {formatDate(change.changedAt, true)}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Meta */}
@@ -463,7 +520,7 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
           {isAmbassador && (
             <>
               {/* Advance status */}
-              {nextStatus && (
+              {currentStatusIndex !== -1 && nextStatus && (
                 <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
                   <h3 className="text-xs font-black text-indigo-700 uppercase tracking-widest mb-3">Avanzar estado</h3>
                   <button
@@ -478,6 +535,53 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
                         {nextStatus} <ChevronRight size={16} />
                       </>
                     )}
+                  </button>
+
+                  {!showDismissForm ? (
+                    <button
+                      onClick={() => setShowDismissForm(true)}
+                      className="w-full mt-2 py-2 text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Ban size={12} /> Desestimar solicitud
+                    </button>
+                  ) : (
+                    <div className="mt-3 pt-3 border-t border-indigo-200 space-y-2">
+                      <textarea
+                        rows={3}
+                        value={dismissReason}
+                        onChange={(e) => setDismissReason(e.target.value)}
+                        placeholder="Explicá por qué se desestima (obligatorio)..."
+                        className="w-full px-3 py-2 rounded-xl border border-red-200 bg-white text-xs text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setShowDismissForm(false); setDismissReason(''); }}
+                          className="flex-1 py-2 bg-white border border-zinc-200 text-zinc-500 font-bold rounded-xl text-xs"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={handleDismiss}
+                          disabled={!dismissReason.trim() || dismissing}
+                          className="flex-1 py-2 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1"
+                        >
+                          {dismissing ? <Loader2 size={12} className="animate-spin" /> : 'Confirmar'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Reopen dismissed */}
+              {request.status === Status.DISMISSED && (
+                <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
+                  <button
+                    onClick={handleReopen}
+                    disabled={changingStatus}
+                    className="w-full py-2.5 border border-zinc-200 text-zinc-600 hover:bg-zinc-50 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                  >
+                    {changingStatus ? <Loader2 size={12} className="animate-spin" /> : <><RotateCcw size={12} /> Reabrir solicitud</>}
                   </button>
                 </div>
               )}

@@ -3,7 +3,7 @@ import { subscribeToRequests } from '../../services/requestService';
 import { IdeaRequest, Status, Priority, Team, isMyTurn } from '../../types';
 import { RequestCard } from '../requests/RequestCard';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Filter, X, Lightbulb, Wrench, PartyPopper, SortAsc, Bell } from 'lucide-react';
+import { Search, Filter, X, Lightbulb, Wrench, PartyPopper, SortAsc, Bell, Ban } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
@@ -15,6 +15,7 @@ const STATUS_TABS = [
   { value: Status.IDEA, label: 'Ideas', icon: Lightbulb },
   { value: Status.IN_PROGRESS, label: 'En progreso', icon: Wrench },
   { value: Status.DONE, label: 'Logramos', icon: PartyPopper },
+  { value: Status.DISMISSED, label: 'Desestimadas', icon: Ban },
 ];
 
 export const DashboardView: React.FC<Props> = ({ onOpenDetail }) => {
