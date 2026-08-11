@@ -7,8 +7,10 @@ import {
   updateAmbassadorNotes,
   updateRequestPriority,
   deleteRequest,
+  assignRequest,
+  unassignRequest,
 } from '../../services/requestService';
-import { IdeaRequest, Comment, Status, Priority, FREQUENCY_LABELS, computeSavings, computeWeeklyHours } from '../../types';
+import { IdeaRequest, Comment, Status, Priority, FREQUENCY_LABELS, computeSavings, computeWeeklyHours, isMyTurn } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatusBadge } from '../ui/StatusBadge';
 import { PriorityBadge } from '../ui/PriorityBadge';
@@ -16,7 +18,7 @@ import { TeamBadge } from '../ui/TeamBadge';
 import {
   ArrowLeft, Clock, Paperclip, Send, Loader2, Lightbulb, Wrench,
   PartyPopper, FileText, Image, CheckCircle2, ChevronRight,
-  StickyNote, Trash2, AlertTriangle, MessageCircle, Shield,
+  StickyNote, Trash2, AlertTriangle, MessageCircle, Shield, Bell, UserCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatFileSize, isImageType } from '../../services/storageService';
@@ -62,6 +64,7 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
   const [changingStatus, setChangingStatus] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToRequests((reqs) => {
@@ -119,6 +122,19 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
     onBack();
   };
 
+  const handleAssign = async () => {
+    if (!appUser) return;
+    setAssigning(true);
+    await assignRequest(requestId, { email: appUser.email, name: appUser.name });
+    setAssigning(false);
+  };
+
+  const handleUnassign = async () => {
+    setAssigning(true);
+    await unassignRequest(requestId);
+    setAssigning(false);
+  };
+
   if (!request) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -150,6 +166,11 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
             <StatusBadge status={request.status} />
             <PriorityBadge priority={request.priority} />
             <TeamBadge team={request.team} />
+            {isMyTurn(request, appUser?.email, isAmbassador) && (
+              <span className="inline-flex items-center gap-1.5 border font-semibold rounded-full whitespace-nowrap text-xs px-3 py-1 bg-rose-100 text-rose-700 border-rose-200">
+                <Bell size={12} /> Tu turno
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -387,6 +408,55 @@ export const RequestDetail: React.FC<Props> = ({ requestId, onBack }) => {
                 </>
               );
             })()}
+          </div>
+
+          {/* Asignación */}
+          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5 space-y-3">
+            <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Asignación</h3>
+            {request.assignedTo ? (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-black flex-shrink-0">
+                  {request.assignedTo.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-zinc-800 truncate">{request.assignedTo.name}</p>
+                  <p className="text-[10px] text-zinc-400">está a cargo</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-400">Todavía nadie la tomó.</p>
+            )}
+
+            {isAmbassador && (
+              request.assignedTo?.email === appUser?.email ? (
+                <button
+                  onClick={handleUnassign}
+                  disabled={assigning}
+                  className="w-full py-2.5 border border-zinc-200 text-zinc-500 hover:bg-zinc-50 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                >
+                  {assigning ? <Loader2 size={12} className="animate-spin" /> : 'Liberar'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleAssign}
+                  disabled={assigning}
+                  className={`w-full py-2.5 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 ${
+                    request.assignedTo
+                      ? 'border border-indigo-200 text-indigo-600 hover:bg-indigo-50'
+                      : 'bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white'
+                  }`}
+                >
+                  {assigning ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <>
+                      <UserCheck size={12} />
+                      {request.assignedTo ? 'Tomar para mí' : 'Tomar solicitud'}
+                    </>
+                  )}
+                </button>
+              )
+            )}
           </div>
 
           {/* Ambassador panel */}

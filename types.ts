@@ -44,6 +44,13 @@ export enum Priority {
 
 export type UserRole = 'AMBASSADOR' | 'MEMBER';
 
+export type WaitingOn = 'AMBASSADOR' | 'MEMBER';
+
+export interface AssignedTo {
+  email: string;
+  name: string;
+}
+
 export interface Attachment {
   name: string;
   url: string;
@@ -81,9 +88,23 @@ export interface IdeaRequest {
   ambassadorNotes: string;
   commentCount?: number;
   statusHistory: StatusChange[];
+  assignedTo?: AssignedTo;
+  waitingOn?: WaitingOn;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   resolvedAt?: Timestamp;
+}
+
+// Quién tiene que actuar: se deriva del último mensaje (embajador pregunta -> pelota
+// pasa al miembro, miembro responde -> vuelve al embajador). Sin mensajes, arranca
+// esperando al embajador. Los cambios de estado no la mueven.
+export function isMyTurn(request: IdeaRequest, userEmail: string | undefined, isAmbassador: boolean): boolean {
+  if (!userEmail || request.status === Status.DONE) return false;
+  const waitingOn = request.waitingOn ?? 'AMBASSADOR';
+  if (isAmbassador) {
+    return waitingOn === 'AMBASSADOR' && (!request.assignedTo || request.assignedTo.email === userEmail);
+  }
+  return waitingOn === 'MEMBER' && request.submittedBy.email === userEmail;
 }
 
 export interface Comment {

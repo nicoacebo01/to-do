@@ -68,7 +68,7 @@ export const RequestForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
       }
 
       const hours = parseFloat(String(form.timeSpentHours)) || 0;
-      const data: Omit<IdeaRequest, 'id' | 'createdAt' | 'updatedAt' | 'statusHistory'> = {
+      const data: Omit<IdeaRequest, 'id' | 'createdAt' | 'updatedAt' | 'statusHistory' | 'waitingOn'> = {
         title: form.title.trim(),
         team: form.team,
         submittedBy: { email: appUser.email, name: appUser.name },

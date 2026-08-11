@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { subscribeToRequests } from '../../services/requestService';
-import { IdeaRequest, Status, Priority, Team } from '../../types';
+import { IdeaRequest, Status, Priority, Team, isMyTurn } from '../../types';
 import { RequestCard } from '../requests/RequestCard';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Filter, X, Lightbulb, Wrench, PartyPopper, SortAsc } from 'lucide-react';
+import { Search, Filter, X, Lightbulb, Wrench, PartyPopper, SortAsc, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
@@ -27,6 +27,7 @@ export const DashboardView: React.FC<Props> = ({ onOpenDetail }) => {
   const [teamFilter, setTeamFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'priority'>('date');
+  const [onlyMyTurn, setOnlyMyTurn] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToRequests((data) => {
@@ -48,6 +49,7 @@ export const DashboardView: React.FC<Props> = ({ onOpenDetail }) => {
       if (!isAmbassador && r.submittedBy.email !== appUser?.email) {
         // Members see all requests but can filter their own
       }
+      if (onlyMyTurn && !isMyTurn(r, appUser?.email, isAmbassador)) return false;
       if (statusFilter && r.status !== statusFilter) return false;
       if (teamFilter && r.team !== teamFilter) return false;
       if (priorityFilter && r.priority !== priorityFilter) return false;
@@ -79,12 +81,15 @@ export const DashboardView: React.FC<Props> = ({ onOpenDetail }) => {
     done: requests.filter((r) => r.status === Status.DONE).length,
   };
 
-  const hasFilters = search || statusFilter || teamFilter || priorityFilter;
+  const myTurnCount = requests.filter((r) => isMyTurn(r, appUser?.email, isAmbassador)).length;
+
+  const hasFilters = search || statusFilter || teamFilter || priorityFilter || onlyMyTurn;
   const clearFilters = () => {
     setSearch('');
     setStatusFilter('');
     setTeamFilter('');
     setPriorityFilter('');
+    setOnlyMyTurn(false);
   };
 
   return (
@@ -154,7 +159,18 @@ export const DashboardView: React.FC<Props> = ({ onOpenDetail }) => {
         </div>
 
         {/* Status tabs */}
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 mt-3 flex-wrap">
+          <button
+            onClick={() => setOnlyMyTurn((v) => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              onlyMyTurn
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
+            }`}
+          >
+            <Bell size={11} />
+            Esperando tu respuesta{myTurnCount > 0 ? ` (${myTurnCount})` : ''}
+          </button>
           {STATUS_TABS.map(({ value, label, icon: Icon }) => (
             <button
               key={value}

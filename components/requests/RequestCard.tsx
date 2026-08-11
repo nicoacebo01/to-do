@@ -1,10 +1,11 @@
 import React from 'react';
-import { IdeaRequest } from '../../types';
+import { IdeaRequest, isMyTurn } from '../../types';
 import { StatusBadge } from '../ui/StatusBadge';
 import { PriorityBadge } from '../ui/PriorityBadge';
 import { TeamBadge } from '../ui/TeamBadge';
-import { Clock, Paperclip, User, ChevronRight, MessageCircle } from 'lucide-react';
+import { Clock, Paperclip, User, ChevronRight, MessageCircle, Bell, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Props {
   request: IdeaRequest;
@@ -17,6 +18,9 @@ function formatDate(ts: { toDate?: () => Date } | null | undefined): string {
 }
 
 export const RequestCard: React.FC<Props> = ({ request, onClick }) => {
+  const { appUser, isAmbassador } = useAuth();
+  const myTurn = isMyTurn(request, appUser?.email, isAmbassador);
+
   return (
     <motion.div
       layout
@@ -41,6 +45,11 @@ export const RequestCard: React.FC<Props> = ({ request, onClick }) => {
         <StatusBadge status={request.status} size="sm" />
         <PriorityBadge priority={request.priority} />
         <TeamBadge team={request.team} />
+        {myTurn && (
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200 font-semibold">
+            <Bell size={10} /> Tu turno
+          </span>
+        )}
       </div>
 
       {/* Current process preview */}
@@ -55,6 +64,12 @@ export const RequestCard: React.FC<Props> = ({ request, onClick }) => {
             <User size={11} />
             {request.submittedBy.name}
           </span>
+          {request.assignedTo && (
+            <span className="flex items-center gap-1 text-indigo-500">
+              <UserCheck size={11} />
+              {request.assignedTo.name}
+            </span>
+          )}
           {request.hoursPerWeek > 0 && (
             <span className="flex items-center gap-1 text-amber-600 font-semibold">
               <Clock size={11} />

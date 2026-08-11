@@ -5,6 +5,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   onSnapshot,
   query,
   orderBy,
@@ -14,7 +15,7 @@ import {
   increment,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { IdeaRequest, Status, Comment, AppUser, StatusChange } from '../types';
+import { IdeaRequest, Status, Comment, AppUser, AssignedTo, StatusChange } from '../types';
 
 const REQUESTS_COL = 'idea_requests';
 
@@ -27,7 +28,7 @@ export function subscribeToRequests(callback: (requests: IdeaRequest[]) => void)
 }
 
 export async function createRequest(
-  data: Omit<IdeaRequest, 'id' | 'createdAt' | 'updatedAt' | 'statusHistory'>
+  data: Omit<IdeaRequest, 'id' | 'createdAt' | 'updatedAt' | 'statusHistory' | 'waitingOn'>
 ): Promise<string> {
   const now = Timestamp.now();
   const initialHistory: StatusChange[] = [
@@ -42,10 +43,25 @@ export async function createRequest(
   const ref = await addDoc(collection(db, REQUESTS_COL), {
     ...data,
     statusHistory: initialHistory,
+    waitingOn: 'AMBASSADOR',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
   return ref.id;
+}
+
+export async function assignRequest(requestId: string, ambassador: AssignedTo): Promise<void> {
+  await updateDoc(doc(db, REQUESTS_COL, requestId), {
+    assignedTo: { email: ambassador.email.toLowerCase(), name: ambassador.name },
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function unassignRequest(requestId: string): Promise<void> {
+  await updateDoc(doc(db, REQUESTS_COL, requestId), {
+    assignedTo: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function updateRequestStatus(
@@ -121,6 +137,7 @@ export async function addCommentToRequest(
   });
   await updateDoc(doc(db, REQUESTS_COL, requestId), {
     commentCount: increment(1),
+    waitingOn: comment.authorRole === 'AMBASSADOR' ? 'MEMBER' : 'AMBASSADOR',
     updatedAt: serverTimestamp(),
   });
 }
